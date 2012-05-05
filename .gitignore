@@ -1,0 +1,6 @@
+*.suo
+*.user
+_resharper.*
+*/bin
+*/obj
+*.ncrunchsolution
