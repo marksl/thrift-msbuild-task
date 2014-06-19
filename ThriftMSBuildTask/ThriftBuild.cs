@@ -64,13 +64,18 @@ namespace ThriftMSBuildTask
         public ITaskItem OutputName { get; set; }
 
         /// <summary>
+        /// The name of the AssemblyInfo.cs
+        /// </summary>
+        public ITaskItem AssemblyInfoPath { get; set; }
+
+        /// <summary>
         /// The full path to the compiled ThriftLibrary. This allows msbuild tasks to use this
         /// output as a variable for use elsewhere.
         /// </summary>
         [Output]
         public ITaskItem ThriftImplementation { get; private set; }
 
-        private const string lastCompilationName = "LAST_COMP_TIMESTAMP";
+        private const string LastCompilationName = "LAST_COMP_TIMESTAMP";
 
         private void LogMessage(string text, MessageImportance importance)
         {
@@ -98,9 +103,12 @@ namespace ThriftMSBuildTask
             return directories.Aggregate(paths, (current, dir) => FindSourcesRecursively(dir, current));
         }
 
-        private static ITaskItem[] FindSources(string sourceDirectory)
+        private static ITaskItem[] FindSources(string sourceDirectory, string assemblyInfoPath)
         {
             List<string> files = FindSourcesRecursively(sourceDirectory);
+
+            if (!string.IsNullOrEmpty(assemblyInfoPath))
+                files.Add(assemblyInfoPath);
 
             var items = new ITaskItem[files.Count];
             for (int i = 0; i < items.Length; i++)
@@ -143,7 +151,7 @@ namespace ThriftMSBuildTask
             string defDir = SafePath(ThriftDefinitionDir.ItemSpec);
             
             //look for last compilation timestamp
-            string lastBuildPath = Path.Combine(defDir, lastCompilationName);
+            string lastBuildPath = Path.Combine(defDir, LastCompilationName);
             string lastWrite = LastWriteTime(defDir);
 
             if (File.Exists(lastBuildPath))
@@ -215,10 +223,10 @@ namespace ThriftMSBuildTask
                               References = new ITaskItem[] {new TaskItem(ThriftLibrary.ItemSpec)},
                               EmitDebugInformation = true,
                               OutputAssembly = new TaskItem(outputPath),
-                              Sources = FindSources(Path.Combine(thriftDir, "gen-csharp")),
+                              Sources = FindSources(Path.Combine(thriftDir, "gen-csharp"), AssemblyInfoPath != null ? AssemblyInfoPath.ItemSpec : null),
                               BuildEngine = this.BuildEngine
                           };
-
+            
             LogMessage("Compiling generated cs...", MessageImportance.Normal);
             if (!csc.Execute())
             {
